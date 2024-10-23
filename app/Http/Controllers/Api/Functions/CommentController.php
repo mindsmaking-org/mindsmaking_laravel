@@ -75,7 +75,7 @@ class CommentController extends Controller
     
 
     // Get a specific comment
-    public function showComment($postId, $commentId)
+    public function showComment(Request $request)
     {
         try {
             $commentId = $request->route('comment');
@@ -124,7 +124,7 @@ class CommentController extends Controller
                 return $this->sendResponse(false, "Comment not found", [], 400);
             }
 
-            $comment = $this->commentService->findComment($commentId, $post_id);
+            $comment = $this->commentService->findComment($commentId, $postId);
 
             if ($comment->user_id !== auth()->id()) {
                 return $this->sendResponse(false, "You are not authorized to edit this comment", [], 403);
@@ -163,7 +163,7 @@ class CommentController extends Controller
                 return $this->sendResponse(false, "Comment not found", [], 400);
             }
             
-            $comment = $this->commentService->findComment($commentId, $post_id);
+            $comment = $this->commentService->findComment($commentId, $postId);
             if ($comment->user_id !== auth()->id()) {
                 return $this->sendResponse(false, "You are not authorized to delete this comment", [], 403);
             }
@@ -196,7 +196,7 @@ class CommentController extends Controller
                 return $this->sendResponse(false, "Comment not found", [], 400);
             }
             
-            $comment = $this->commentService->findComment($commentId, $post_id);
+            $comment = $this->commentService->findComment($commentId, $postId);
             $comment->delete();
 
             $email = auth()->user()->email;

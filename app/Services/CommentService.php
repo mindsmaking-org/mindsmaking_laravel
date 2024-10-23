@@ -24,7 +24,7 @@ class CommentService
         return Comment::find($commentId);
     }
 
-    public function findComment($commentId, $post_id){
+    public function findComment($commentId, $postId){
         return Comment::where('post_id', $postId)->find($commentId);
     }
 }

@@ -22,6 +22,10 @@ class Post extends Model
         'views'
     ];
 
+    protected $casts = [
+        'content' => 'json',
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class);

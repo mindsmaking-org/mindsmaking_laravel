@@ -113,7 +113,7 @@ class GroupController extends Controller
             }
 
             if ($group->members()->where('user_id', auth()->user()->id)->exists()) {
-                return $this->sendResponse(false, 'you are already a member of this group .', [], 400);
+                return $this->sendResponse(false, 'you are already a member of this group .', [], 200);
             }
 
             $userId = auth()->user()->id;
@@ -150,7 +150,7 @@ class GroupController extends Controller
                 return $this->sendResponse(false, 'no group found with this id', [], 400);
             }
 
-            if ($group->members()->where('user_id', auth()->user()->id)->exists()) {
+            if (!$group->members()->where('user_id', auth()->user()->id)->exists()) {
                 return $this->sendResponse(false, 'you not a member of this group .', [], 400);
             }
 

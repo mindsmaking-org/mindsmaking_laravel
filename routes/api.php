@@ -98,11 +98,14 @@ Route::get('images/{filename}', function ($filename) {
 });
 
 Route::prefix('posts')->controller(CommentController::class)->group(function(){
-    Route::get('posts/{post}/comments', 'getPostComment')->middleware('auth:sanctum'); 
-    Route::post('posts/{post}/comments', 'storeComment')->middleware(['auth:sanctum', 'user']); 
-    Route::get('posts/{post}/comments/{comment}', 'showComment')->middleware('auth:sanctum'); 
-    Route::put('posts/{post}/comments/{comment}', 'updateComment')->middleware(['auth:sanctum', 'user']); 
-    Route::delete('posts/{post}/comments/{comment}', 'destroyComment')->middleware('auth:sanctum'); 
+    Route::get('{post}/comments', 'getPostComment')->middleware('auth:sanctum'); 
+    Route::post('{post}/comments', 'storeComment')->middleware(['auth:sanctum', 'user']); 
+    Route::get('{post}/comments/{comment}', 'showComment')->middleware('auth:sanctum'); 
+    Route::put('{post}/comments/{comment}', 'updateComment')->middleware(['auth:sanctum', 'user']); 
+    Route::delete('{post}/comments/{comment}', 'destroyComment')->middleware('auth:sanctum'); 
+});
+
+Route::controller(CommentController::class)->group(function(){
     Route::delete('moderator/posts/{post}/comments/{comment}', 'destroyCommentByAdmin')->middleware(['auth:sanctum', 'admin', 'moderator']); 
 });
 
@@ -114,7 +117,7 @@ Route::controller(GroupController::class)->group(function(){
         Route::delete('groups/{messageId}/messages', 'adminDeleteMessage');
     });
     
-    Route::get('/groups', 'viewAllGroups');
+    Route::get('/groups', 'viewAllGroups')->middleware(['auth:sanctum', 'user']);
     Route::get('/groups/{groupId}/join', 'joinGroup')->middleware(['auth:sanctum', 'user']);
     Route::post('/groups/{groupId}/messages', 'sendMessage')->middleware(['auth:sanctum', 'user']);
     Route::get('/groups/{groupId}/messages', 'viewMessages')->middleware('auth:sanctum');

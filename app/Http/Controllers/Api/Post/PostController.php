@@ -160,9 +160,6 @@ class PostController extends Controller
     {
         try {       
             $query = $this->postService->queryPost();
-
-            // $categoryId = $request->query('category_id');
-            // $subcategoryId = $request->query('subcategory_id');
             $childSubcategoryId = $request->query('child_subcategory_id');
             $postId = $request->query('post_id');
 

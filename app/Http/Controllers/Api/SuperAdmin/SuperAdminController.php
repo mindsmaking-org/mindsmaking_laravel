@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\SuperAdmin;
+namespace App\Http\Controllers\Api\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
@@ -21,7 +21,7 @@ class SuperAdminController extends Controller
 
     public function getAllAdmins(){
         try {
-            $admins = $this->superAdminService->getAllAdmins();
+            $admins = $this->superadminService->getAllAdmins()->where('email', '!=', 'superAdmin@gmail.com');
 
             if(!$admins){
                 return $this->sendResponse(false, 'failed to get all the admin from the database', [], 400);
@@ -47,7 +47,7 @@ class SuperAdminController extends Controller
                 return $this->sendResponse(false, 'Roles cannot be empty', [], 400);
             }
 
-            $admin = $this->superAdminService->findAdminById($adminId);
+            $admin = $this->superadminService->findAdminById($adminId);
 
             if(!$admin){
                 return $this->sendResponse(false, 'No admin was found with the given Id', [], 400);
