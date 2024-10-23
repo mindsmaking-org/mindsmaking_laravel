@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Admin;
+use Illuminate\Support\Facades\Hash;
 
 class AuthService
 {
-    public function createUser(array $data)
+    public function createUser($request)
     {
         return User::create([
             'name'=> $request->name,
