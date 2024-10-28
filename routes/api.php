@@ -81,22 +81,6 @@ Route::controller(PostController::class)->group(function(){
     Route::get('posts/{post}/increment-views', 'incrementViews');
 });
 
-Route::get('images/{filename}', function ($filename) {
-    $path = storage_path('app/public/images/' . $filename);
-
-    if (!File::exists($path)) {
-        abort(404);
-    }
-
-    $file = File::get($path);
-    $type = File::mimeType($path);
-
-    $response = response($file, 200);
-    $response->header("Content-Type", $type);
-
-    return $response;
-});
-
 Route::prefix('posts')->controller(CommentController::class)->group(function(){
     Route::get('{post}/comments', 'getPostComment')->middleware('auth:sanctum'); 
     Route::post('{post}/comments', 'storeComment')->middleware(['auth:sanctum', 'user']); 

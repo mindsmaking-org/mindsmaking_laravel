@@ -26,6 +26,8 @@ class ChildSubcategoryController extends Controller
         try {
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                 'subcategory_id' => 'required|exists:subcategories,id',
             ]);
     
@@ -34,8 +36,11 @@ class ChildSubcategoryController extends Controller
             if($ckeck_if_name_exist){
                 return $this->sendResponse(false, 'ChildSubcategory already exist.', [], 400);
             }
+
+            
+            $imagePath = $request->file('image')->store('images/childsubcategories', 'public');
     
-            $childsubcategory = $this->categoryService->createChildSubcategory($validatedData);
+            $childsubcategory = $this->categoryService->createChildSubcategory($validatedData, $imagePath);
     
             if(!$childsubcategory){
                 return $this->sendResponse(false, 'Failed to create Childsubcategory data', [], 400);
@@ -116,6 +121,8 @@ class ChildSubcategoryController extends Controller
 
             $validatedData = $request->validate([
                 'name' => 'required|string',
+                'description' => 'required|string',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
 
             $childsubcategory = $this->categoryService->getChildSubcategoryById($id);
@@ -125,6 +132,16 @@ class ChildSubcategoryController extends Controller
             }
 
             $childsubcategory->name = $validatedData['name'];
+            if (isset($validatedData['description'])) {
+                $category->description = $validatedData['description'];
+            }
+
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('images/childsubcategories', 'public');
+                $category->image = $imagePath;
+            }
+
+
             $childsubcategory->save();
 
             $email = auth()->user()->email;
@@ -152,6 +169,10 @@ class ChildSubcategoryController extends Controller
 
             if (!$childsubcategory) {
                 return $this->sendResponse(false, 'child_subcategory_id not found', [], 400);
+            }
+
+            if ($subcategory->image && Storage::disk('public')->exists($subcategory->image)) {
+                Storage::disk('public')->delete($subcategory->image);
             }
         
             $childsubcategory->delete();

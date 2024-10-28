@@ -9,7 +9,7 @@ class ChildSubcategory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'subcategory_id'];
+    protected $fillable = ['name', 'description', 'subcategory_id'];
 
     protected $hidden = ['created_at', 'updated_at'];
     

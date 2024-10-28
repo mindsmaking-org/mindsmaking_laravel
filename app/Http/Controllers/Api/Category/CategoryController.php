@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Services\CategoryService;
 use App\Services\ActivityService;
+use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
@@ -23,7 +24,10 @@ class CategoryController extends Controller
         try {
             
             $validatedData = $request->validate([
-                'name' => 'required|string'
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'image1' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+                'image2' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
              
             $ckeck_if_name_exist = $this->categoryService->ckeckIfCategoryNameExist($request);
@@ -32,7 +36,11 @@ class CategoryController extends Controller
                 return $this->sendResponse(false, 'category already exist',[], 400);
             }
     
-            $category = $this->categoryService->createCategory($validatedData);
+            $image1Path = $request->file('image1')->store('images/categories', 'public');
+
+            $image2Path = $request->hasFile('image2') ? $request->file('image2')->store('images/categories', 'public') : null;
+            
+            $category = $this->categoryService->createCategory($validatedData, $image1Path, $image2Path);
 
             if($category){
                 $email = auth()->user()->email;
@@ -53,7 +61,6 @@ class CategoryController extends Controller
         
     }
 
-  
     public function getAllCategories()
     {
         try {
@@ -73,11 +80,14 @@ class CategoryController extends Controller
     {
         try {
             $id = $request->query('category_id');
+            $name = $request->query('name');
 
             if ($id) {
                 $category = $this->categoryService->getCategoryById($id);
+            } elseif ($name) {
+                $category = $this->categoryService->getCategoryByName($name);
             }else {
-                return $this->sendResponse(false, 'please provide either an category_id', [], 400);
+                return $this->sendResponse(false, 'please provide either an category_id or a category name ', [], 400);
             }
 
             if (!$category) {
@@ -108,6 +118,9 @@ class CategoryController extends Controller
 
             $validatedData = $request->validate([
                 'name' => 'required|string',
+                'description' => 'nullable|string',
+                'image1' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'image2' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
 
             $category = $this->categoryService->getCategoryById($id);
@@ -117,6 +130,19 @@ class CategoryController extends Controller
             }
 
             $category->name = $validatedData['name'];
+            if (isset($validatedData['description'])) {
+                $category->description = $validatedData['description'];
+            }
+
+            if ($request->hasFile('image1')) {
+                $image1Path = $request->file('image1')->store('images/categories', 'public');
+                $category->image1 = $image1Path;
+            }
+
+            if ($request->hasFile('image2')) {
+                $image2Path = $request->file('image2')->store('images/categories', 'public');
+                $category->image2 = $image2Path;
+            }
             $category->save();
 
             $email = auth()->user()->email;
@@ -131,25 +157,49 @@ class CategoryController extends Controller
         }
     }
 
-    public function deleteCategory(Request $request){
+    public function deleteCategory(Request $request)
+    {
         try {
             $id = $request->query('category_id');
             if (!$id) {
                 return $this->sendResponse(false, 'category_id is required in the query string.', [], 400);
             }
 
+            // Retrieve the category
             $category = $this->categoryService->getCategoryById($id);
             if (!$category) {
                 return $this->sendResponse(false, 'Category not found.', [], 400);
             }
+
+            // Load related subcategories and child subcategories
             $category->load('subcategories.childSubcategories');
 
+            // Delete the category images if they exist
+            if ($category->image1 && Storage::disk('public')->exists($category->image1)) {
+                Storage::disk('public')->delete($category->image1);
+            }
+            if ($category->image2 && Storage::disk('public')->exists($category->image2)) {
+                Storage::disk('public')->delete($category->image2);
+            }
+
+            // Delete subcategories and their images
             foreach ($category->subcategories as $subcategory) {
+                // Delete the subcategory image if it exists
+                if ($subcategory->image && Storage::disk('public')->exists($subcategory->image)) {
+                    Storage::disk('public')->delete($subcategory->image);
+                }
+
+                // Delete child subcategories
                 $subcategory->childSubcategories()->delete();
+                
+                // Delete the subcategory
                 $subcategory->delete();
             }
+
+            // Delete the main category
             $category->delete();
 
+            // Log the activity
             $email = auth()->user()->email;
             $title = 'Category Deleted';
             $action = "The category with ID {$id} and name '{$category->name}' was deleted along with its subcategories and child subcategories.";
@@ -157,7 +207,8 @@ class CategoryController extends Controller
             $this->activityService->createActivity($email, $title, $action);
 
             return $this->sendResponse(true, 'Category and related subcategories successfully deleted', [], 200);
-        }catch (Exception $e) {
+
+        } catch (Exception $e) {
             return $this->sendResponse(false, 'An error occurred while deleting the category data', ['error' => $e->getMessage()], 500);
         }
     }

@@ -12,8 +12,12 @@ class CategoryService
         return Category::where('name', $request->name)->first();
     }
 
-    public function createCategory(array $validatedData)
+    public function createCategory(array $validatedData, $image1Path, $image2Path = null)
     {
+        $validatedData['image1'] = $image1Path;
+        if ($image2Path) {
+            $validatedData['image2'] = $image2Path;
+        }
         return Category::create($validatedData);
     }
 
@@ -26,7 +30,7 @@ class CategoryService
     }
 
     public function getCategoryByName($name){
-        return Category::where('name', $name)->first();
+        return Category::where('name', $name);
     }
 
     // for  Subcategories
@@ -36,8 +40,9 @@ class CategoryService
         ->first();
     }
 
-    public function createSubcategory(array $validatedData)
+    public function createSubcategory(array $validatedData, $imagePath)
     {
+        $validatedData['image'] = $imagePath;
         return Subcategory::create($validatedData);
     }
 
@@ -50,7 +55,7 @@ class CategoryService
     }
 
     public function getSubcategoryByName($name){
-        return Subcategory::where('name', $name)->first();
+        return Subcategory::where('name', $name);
     }
 
     // for  ChildSubcategories
@@ -74,6 +79,6 @@ class CategoryService
     }
 
     public function getChildSubcategoryByName($name){
-        return ChildSubcategory::where('name', $name)->first();
+        return ChildSubcategory::where('name', $name);
     }
 }
