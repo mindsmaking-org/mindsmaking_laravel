@@ -80,7 +80,7 @@ class ChildSubcategoryController extends Controller
        
     }
 
-    public function getASubcategoryInfo(Request $request)
+    public function getChildSubcategoryInfo(Request $request)
     {
         try {
             $id = $request->query('id');

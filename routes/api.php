@@ -63,7 +63,7 @@ Route::prefix('editor')->controller(ChildSubcategoryController::class)->group(fu
         Route::delete('delete-child-subcategories', 'deleteChildSubcategory');
     });
     // Route::get('admin/child-subcategories', 'getAllSubcategories');
-    // Route::get('admin/child-subcategories/{childSubcategory}', 'show');
+    Route::get('admin/child-subcategories', 'getChildSubcategoryInfo');
 });
 
 Route::prefix('publisher')->controller(PostController::class)->group(function(){
