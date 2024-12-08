@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Services\CategoryService;
 use App\Services\ActivityService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class CategoryController extends Controller
 {
@@ -19,48 +20,58 @@ class CategoryController extends Controller
         $this->activityService = $activityService;
     }
 
-    public function store(Request $request){
-
+    public function store(Request $request)
+    {
         try {
-            
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'required|string',
+                'position' => 'nullable|integer',
                 'image1' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
                 'image2' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]);
-             
-            $ckeck_if_name_exist = $this->categoryService->ckeckIfCategoryNameExist($request);
     
-            if($ckeck_if_name_exist){
-                return $this->sendResponse(false, 'category already exist',[], 400);
+            $checkIfNameExists = $this->categoryService->ckeckIfCategoryNameExist($request);
+    
+            if ($checkIfNameExists) {
+                return $this->sendResponse(false, 'Category already exists', [], 400);
+            }
+    
+            $position = $validatedData['position'];
+    
+            if ($position) {
+                $conflictingCategory = $this->categoryService->getPosition($position);
+    
+                if ($conflictingCategory) {
+                    return $this->sendResponse(false, "Position {$position} is already occupied by category '{$conflictingCategory->name}'", [], 400);
+                }
             }
     
             $image1Path = $request->file('image1')->store('images/categories', 'public');
-
-            $image2Path = $request->hasFile('image2') ? $request->file('image2')->store('images/categories', 'public') : null;
-            
+            $image2Path = $request->hasFile('image2') 
+                ? $request->file('image2')->store('images/categories', 'public') 
+                : null;
+    
+            $validatedData['position'] = $position ?? (Category::max('position') + 1);
+    
             $category = $this->categoryService->createCategory($validatedData, $image1Path, $image2Path);
-
-            if($category){
+    
+            if ($category) {
                 $email = auth()->user()->email;
                 $title = 'Category Created';
-                $action = "The category of name $request->name was created";
-
-                $this->activityService->createActivity($email, $title, $action);
-
-                return $this->sendResponse(true, 'succefully created', ['data'=>$category], 201);
-            }
-
-            return $this->sendResponse(false, 'Failed to create Category data', [], 400);
+                $action = "The category named {$request->name} was created with position {$validatedData['position']}";
     
-           
-        } catch (Exception $e) {
-            return $this->sendResponse(false, 'An error occurred while Creating category', ['error' => $e->getMessage()], 500);
+                $this->activityService->createActivity($email, $title, $action);
+    
+                return $this->sendResponse(true, 'Successfully created', ['data' => $category], 201);
+            }
+    
+            return $this->sendResponse(false, 'Failed to create category data', [], 400);
+        } catch (\Exception $e) {
+            return $this->sendResponse(false, 'An error occurred while creating category', ['error' => $e->getMessage()], 500);
         }
-        
     }
-
+    
     public function getAllCategories()
     {
         try {
@@ -69,7 +80,26 @@ class CategoryController extends Controller
             if(!$categories){
                 return $this->sendResponse(false, 'this action failed', [], 400);
             }
-            return $this->sendResponse(true, 'this action was successful', ['data'=>$categories], 200);
+
+            if ($categories->isEmpty()) {
+                return $this->sendResponse(false, 'No categories found', [], 400);
+            }
+
+            $categoriesWithPosition = $categories->whereNotNull('position')->sortBy('position')->values();
+            $categoriesWithoutPosition = $categories->whereNull('position')->values();
+
+            $maxPosition = $categoriesWithPosition->max('position') ?? 0;
+            foreach ($categoriesWithoutPosition as $category) {
+                $maxPosition++;
+                $category->position = $maxPosition;
+                $category->save();
+                $categoriesWithPosition->push($category); 
+            }
+
+            $sortedCategories = $categoriesWithPosition->sortBy('position')->values();
+
+            return $this->sendResponse(true, 'Categories fetched successfully', ['data' => $sortedCategories], 200);
+
         } catch (Exception $e) {
             return $this->sendResponse(false, 'An error occurred while fetching all categories data', ['error' => $e->getMessage()], 500);
         }
@@ -119,6 +149,7 @@ class CategoryController extends Controller
             $validatedData = $request->validate([
                 'name' => 'required|string',
                 'description' => 'nullable|string',
+                'position' => 'nullable|integer|min:1',
                 'image1' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
                 'image2' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
@@ -127,6 +158,22 @@ class CategoryController extends Controller
 
             if (!$category) {
                 return $this->sendResponse(false, 'Category not found.', [], 400);
+            }
+
+            if ($request->has('position')) {
+                $newPosition = $request->input('position');
+                $existingCategory = Category::where('position', $newPosition)->where('id', '!=', $id)->first();
+    
+                if ($existingCategory) {
+                    return $this->sendResponse(
+                        false, 
+                        "Position $newPosition is already taken by category '{$existingCategory->name}'", 
+                        [], 
+                        400
+                    );
+                }
+    
+                $category->position = $newPosition;
             }
 
             $category->name = $validatedData['name'];

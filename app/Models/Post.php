@@ -24,7 +24,8 @@ class Post extends Model
         'child_subcategory_id',
         'posted_by',
         'writer',
-        'views'
+        'views',
+        'status'
     ];
 
     protected $casts = [

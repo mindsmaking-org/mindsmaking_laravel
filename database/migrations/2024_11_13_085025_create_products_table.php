@@ -13,6 +13,16 @@ return new class extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
+            $table->text('name');
+            $table->text('image');
+            $table->text('title');
+            $table->json('description');
+            $table->string('price');
+            $table->json('links');
+            $table->json('reviews');
+            $table->foreignId('parent_post_id')->constrained('posts');
+            $table->json('affiliate_posts')->nullable();
+            
             $table->timestamps();
         });
     }

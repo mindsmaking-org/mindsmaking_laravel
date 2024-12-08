@@ -8,21 +8,27 @@ use App\Models\Post;
 use Illuminate\Support\Facades\Auth;
 use App\Services\PostService;
 use App\Services\ActivityService;
+use App\Services\ProductService;
+use App\Services\WriterService;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class PostController extends Controller
 {
     protected $postService;
     protected $activityService;
+    protected $productService;
+    protected $writerService;
 
     
-    public function __construct(PostService $postService, ActivityService $activityService){
+    public function __construct(PostService $postService, ActivityService $activityService, ProductService $productService, WriterService $writerService){
         $this->postService = $postService;
         $this->activityService = $activityService;
+        $this->productService = $productService;
+        $this->writerService = $writerService;
     }
-    /**
-     * Store a newly created post in storage.
-     */
+   
+
     public function store(Request $request)
     {
         try {
@@ -31,7 +37,7 @@ class PostController extends Controller
             $validatedData = $request->validate([
                 'title' => 'required|string|max:255',
                 'table_of_content' => 'required|array',
-                'content' => 'required|array',
+                'section' => 'required|array',
                 'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
                 'excerpt' => 'required|string|max:255',
                 'key_facts' => 'required|array',
@@ -61,7 +67,7 @@ class PostController extends Controller
             $postData = [
                 'title' => $validatedData['title'],
                 'table_of_content' => json_encode($validatedData['table_of_content']),
-                'content' => $validatedData['content'],
+                'content' => $validatedData['section'],
                 'images' => json_encode($imagePaths), // Save images as JSON
                 'excerpt' => $validatedData['excerpt'],
                 'key_facts' => json_encode($validatedData['key_facts']), // Convert array to JSON
@@ -72,6 +78,7 @@ class PostController extends Controller
                 'child_subcategory_id' => $validatedData['child_subcategory_id'],
                 'posted_by' => $user->email,
                 'writer' => $validatedData['writer'],
+                'status' => 1
             ];
 
             $existingPost = $this->postService->checkForExistingPost($postData);
@@ -114,13 +121,11 @@ class PostController extends Controller
                 'writer' => 'required|email'
             ]);
 
-            // Check if the writer email belongs to an admin with the writer role
             $writerAdmin = $this->postService->check_if_email_is_AWriter($validatedData);
             if (!$writerAdmin) {
                 return $this->sendResponse(false, 'The provided writer email does not belong to a valid admin with the writer role.', [], 400);
             }
 
-            // Find the post by ID
             if (!is_numeric($id)) {
                 return $this->sendResponse(false, 'Post ID must be a number', [], 400);
             }
@@ -130,7 +135,6 @@ class PostController extends Controller
                 return $this->sendResponse(false, 'No post was found with the given ID', [], 400);
             }
 
-            // Check if the authenticated user is authorized to update the post
             if ($post->posted_by != $user->email) {
                 return $this->sendResponse(false, 'You are not authorized to edit this post, you are not the publisher of this post', [], 403);
             }
@@ -185,27 +189,52 @@ class PostController extends Controller
         }
     }
 
-
     public function getAllPost(Request $request)
     {
-        try {       
+        try {   
+            $request->validate([
+                'status' => 'nullable|numeric|in:1,2,3',
+                'child_subcategory_id' => 'nullable|numeric',
+                'post_id' => 'nullable|numeric',
+            ]);
+
             $query = $this->postService->queryPost();
             $childSubcategoryId = $request->query('child_subcategory_id');
             $postId = $request->query('post_id');
+            $status = $request->query('status');
 
             if ($postId) {
                 $query->where('id', $postId);
             }elseif ($childSubcategoryId) {
                 $query->where('child_subcategory_id', $childSubcategoryId);
+            }elseif ($status) {
+                $query->where('status', $status);
             }
             
             $posts = $query->get();
 
-            $response = [
-                'status' => true,
-                'message' => 'Data fetched successfully',
-                'data' => $posts
-            ];
+            $postsWithProducts = $posts->map(function ($post) {
+                $parentProducts = $this->productService->getProductsByParentPostId($post->id);
+    
+                $affiliateProducts = collect();
+    
+               
+                if (!empty($post->affiliate_posts)) {
+                    $affiliatePostIds = json_decode($post->affiliate_posts, true);
+                    $affiliateProducts = $this->productService->getProductsByAffiliatePostIds($affiliatePostIds);
+                }
+    
+                return [
+                    'post' => $post,
+                    'products' => [
+                        'parent' => $parentProducts,
+                        'affiliate' => $affiliateProducts,
+                    ]
+                ];
+            });
+    
+            return $this->sendResponse(true, 'Data fetched successfully', ['data' => $postsWithProducts], 200);
+    
 
             return $this->sendResponse(true, 'Data fetched successfully', ['data'=>$posts], 200);
         } catch (\Exception $e) {
@@ -302,6 +331,52 @@ class PostController extends Controller
     
         } catch (\Exception $e) {
             return $this->sendResponse(false, 'An error occurred while deleting the post', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getWriters(Request $request){
+        try { 
+           
+            if ($request->has('name')) {
+                $name = $request->query('name');
+                $writers = $this->writerService->findWriterByName($name);
+                return $this->sendResponse(true, 'Writers fetched successfully', ['data' => $writers], 200);
+            }
+
+            if ($request->has('email')) {
+                $email = $request->query('email');
+                $writers = $this->writerService->findWriterByEmail($email);
+                return $this->sendResponse(true, 'Writers fetched successfully', ['data' => $writers], 200);
+            }
+    
+            
+            $writers = $this->writerService->allWrtiters();
+            return $this->sendResponse(true, 'All writers fetched successfully', ['data' => $writers], 200);
+    
+        }catch (\Exception $e) {
+            return $this->sendResponse(false, 'An error occurred while getting authors', ['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function statusPost(Request $request, $id)
+    {
+        try {
+            $post = $this->postService->findPostById($id);
+    
+            $validatedData = $request->validate([
+                'status' => 'required|numeric|in:1,2,3'
+            ]);
+    
+            if (!$post) {
+                return $this->sendResponse(false, 'No post was found with the given ID', [], 404);
+            }
+    
+            $post->status = $validatedData['status'];
+            $post->save(); 
+    
+            return $this->sendResponse(true, 'Status for post updated successfully', ['data' => $post], 200);
+        } catch (\Exception $e) {
+            return $this->sendResponse(false, 'An error occurred while updating status', ['error' => $e->getMessage()], 500);
         }
     }
     

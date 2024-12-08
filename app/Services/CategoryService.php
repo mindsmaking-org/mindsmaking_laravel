@@ -81,4 +81,8 @@ class CategoryService
     public function getChildSubcategoryByName($name){
         return ChildSubcategory::where('name', $name);
     }
+
+    public function getPosition($position){
+        Category::where('position', $position)->first();
+    }
 }

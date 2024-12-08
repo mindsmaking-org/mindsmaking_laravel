@@ -16,7 +16,9 @@ use App\Http\Controllers\Api\Tools\WeeklyWeightGainController;
 use App\Http\Controllers\Api\Tools\DueDateCalculatorController;
 use App\Http\Controllers\Api\Tools\OvulationController;
 use App\Http\Controllers\Api\Tools\QuizController;
-use App\Http\Controllers\Api\SuperAdmin\SUperAdminController;
+use App\Http\Controllers\Api\SuperAdmin\SuperAdminController;
+use App\Http\Controllers\Api\Post\ProductController;
+use App\Http\Controllers\Api\Functions\AffiliateLinksController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -30,7 +32,10 @@ Route::controller(AuthController::class)->group(function(){
     Route::get('logout', 'logout')->middleware('auth:sanctum');
 
 
-    Route::post('admin/register', 'adminRegister');
+    Route::middleware(['auth:sanctum', 'superAdmin'])->group(function(){
+        Route::post('admin/register', 'adminRegister');
+    });
+   
     Route::post('admin/login', 'adminLogin');
 
 });
@@ -73,12 +78,29 @@ Route::prefix('publisher')->controller(PostController::class)->group(function(){
         Route::delete('delete-post/{id}', 'deletePost');
         Route::get('/posts/{post}/views', 'getPostViews');
         Route::get('posts/{post}/comments-count', 'getPostCommentsCount');
+        Route::get('author', 'getWriters');
     });
 });
 
 Route::controller(PostController::class)->group(function(){
     Route::get('/posts', 'getAllPost');
     Route::get('posts/{post}/increment-views', 'incrementViews');
+});
+
+Route::get('images/{filename}', function ($filename) {
+    $path = storage_path('app/public/images/' . $filename);
+
+    if (!File::exists($path)) {
+        abort(404);
+    }
+
+    $file = File::get($path);
+    $type = File::mimeType($path);
+
+    $response = response($file, 200);
+    $response->header("Content-Type", $type);
+
+    return $response;
 });
 
 Route::prefix('posts')->controller(CommentController::class)->group(function(){
@@ -149,10 +171,36 @@ Route::controller(QuizController::class)->group(function(){
 Route::get('/admin/quizzes/{quiz}/questions', [QuizController::class, 'getQuestions']);
 
 
-Route::prefix('superAdmin')->controller(SUperAdminController::class)->group(function(){
+Route::prefix('superAdmin')->controller(SuperAdminController::class)->group(function(){
     Route::middleware(['auth:sanctum', 'superAdmin'])->group(function(){
         Route::get('get-admins', 'getAllAdmins');
         Route::put('update-roles/{adminId}', 'updateAdminRoles');
+    });
+});
+
+Route::prefix('superAdmin')->controller(PostController::class)->group(function(){
+    Route::middleware(['auth:sanctum', 'superAdmin'])->group(function(){
+        Route::put('post/status/{id}', 'statusPost');
+    });
+});
+
+Route::prefix('publisher/product')->controller(ProductController::class)->group(function(){
+    Route::middleware(['auth:sanctum', 'admin', 'publisher'])->group(function(){
+        Route::post('create', 'createProduct');
+        Route::get('get', 'getProduct');
+        Route::post('{id}/edit-product', 'editProduct');
+        Route::put('{id}/affiliate-post', 'affiliatePost');
+        Route::delete('{id}/affiliate-post', 'deleteAffiliatePost');
+        Route::delete('{id}/delete', 'deleteProduct');
+    });
+});
+
+Route::prefix('editor/affiliate-links')->controller(AffiliateLinksController::class)->group(function(){
+    Route::middleware(['auth:sanctum', 'admin', 'editor'])->group(function(){
+        Route::post('add', 'createAffiliate');
+        Route::post('{id}/edit', 'editAffiliate');
+        Route::get('get_affiliate', 'getAffiliate');
+        Route::delete('{id}/delete', 'deleteAffiliate');
     });
 });
 
