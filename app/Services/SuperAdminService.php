@@ -13,4 +13,9 @@ class SuperAdminService
     public function findAdminById($adminId){
         return Admin::find($adminId);
     }
+
+    public function findAdminByEmail($adminEmail)
+    {
+        return Admin::where('email', $adminEmail)->first(); 
+    }
 }

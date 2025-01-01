@@ -38,7 +38,8 @@ class PostController extends Controller
                 'title' => 'required|string|max:255',
                 'table_of_content' => 'required|array',
                 'section' => 'required|array',
-                'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+                'images' => 'required|array',
+                'images.*' => 'required|string',
                 'excerpt' => 'required|string|max:255',
                 'key_facts' => 'required|array',
                 'faq' => 'required|array',
@@ -55,24 +56,17 @@ class PostController extends Controller
                 return $this->sendResponse(false, 'The provided writer email does not belong to a valid admin with the writer role.', [], 400);
             }
 
-
-            $imagePaths = [];
-            if ($request->hasFile('images')) {
-                foreach ($request->file('images') as $image) {
-                    $imagePath = $image->store("images/post", 'public'); 
-                    $imagePaths[] = $imagePath; 
-                }
-            }
+            $imagePaths = $validatedData['images'];
 
             $postData = [
                 'title' => $validatedData['title'],
-                'table_of_content' => json_encode($validatedData['table_of_content']),
+                'table_of_content' => $validatedData['table_of_content'],
                 'content' => $validatedData['section'],
-                'images' => json_encode($imagePaths), // Save images as JSON
+                'images' =>$imagePaths, 
                 'excerpt' => $validatedData['excerpt'],
-                'key_facts' => json_encode($validatedData['key_facts']), // Convert array to JSON
-                'faq' => json_encode($validatedData['faq']),
-                'sources' => json_encode($validatedData['sources']),
+                'key_facts' => $validatedData['key_facts'],
+                'faq' => $validatedData['faq'],
+                'sources' => $validatedData['sources'],
                 'category_id' => $validatedData['category_id'] ?? null,
                 'subcategory_id' => $validatedData['subcategory_id'] ?? null,
                 'child_subcategory_id' => $validatedData['child_subcategory_id'],

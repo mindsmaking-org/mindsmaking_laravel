@@ -16,14 +16,16 @@ class AuthService
             'password'=> Hash::make($request->password),
             'signup_type' => $request->signup_type,
             'signup_type_aspect' => $request->signup_type_aspect,
+            'image' => $request->image,
         ]);
     }
 
-    public function createAdmin(array $data){
+    public function createAdmin(array $request){
         return Admin::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $request['name'],
+            'email' => $request['email'],
+            'password' => Hash::make($request['password']),
+            'image' => $request['image'],
         ]);
     }
 }

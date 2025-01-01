@@ -22,7 +22,8 @@ class User extends Authenticatable
         'email',
         'password',
         'signup_type',
-        'signup_type_aspect'
+        'signup_type_aspect',
+        'image'
     ];
 
     /**

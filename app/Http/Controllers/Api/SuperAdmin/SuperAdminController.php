@@ -19,19 +19,49 @@ class SuperAdminController extends Controller
         $this->activityService = $activityService;
     }
 
-    public function getAllAdmins(){
+    public function getAllAdmins(Request $request)
+    {
         try {
-            $admins = $this->superadminService->getAllAdmins()->where('email', '!=', 'superAdmin@gmail.com');
-
-            if(!$admins){
-                return $this->sendResponse(false, 'failed to get all the admin from the database', [], 400);
+            // Retrieve query parameters
+            $adminEmail = $request->query('email');
+            $adminId = $request->query('id');
+    
+            // Fetch admin by email
+            if ($adminEmail) {
+                $admins = $this->superadminService->findAdminByEmail($adminEmail);
+    
+                if (!$admins) {
+                    return $this->sendResponse(false, 'Failed to fetch admin by email.', [], 400);
+                }
+    
+                return $this->sendResponse(true, 'Successfully fetched admin by email.', ['data' => $admins], 200);
             }
-
-            return $this->sendResponse(true, 'successfully fetched all the admins', ['data'=>$admins], 200);
+    
+            // Fetch admin by ID
+            if ($adminId) {
+                $admins = $this->superadminService->findAdminById($adminId);
+    
+                if (!$admins) {
+                    return $this->sendResponse(false, 'Failed to fetch admin by ID.', [], 400);
+                }
+    
+                return $this->sendResponse(true, 'Successfully fetched admin by ID.', ['data' => $admins], 200);
+            }
+    
+            // Fetch all admins excluding super admin
+            $admins = $this->superadminService->getAllAdmins()
+                ->where('email', '!=', 'superAdmin@gmail.com');
+    
+            if ($admins->isEmpty()) {
+                return $this->sendResponse(false, 'No admins found in the database.', [], 400);
+            }
+    
+            return $this->sendResponse(true, 'Successfully fetched all admins.', ['data' => $admins], 200);
         } catch (\Exception $e) {
-            return $this->sendResponse(false, 'An error occurred while fetching all admins .', ['error' => $e->getMessage()], 500);
+            return $this->sendResponse(false, 'An error occurred while fetching admins.', ['error' => $e->getMessage()], 500);
         }
     }
+    
 
     // public function updateAdminRoles
     public function updateAdminRoles(Request $request){

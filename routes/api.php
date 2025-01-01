@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\Tools\QuizController;
 use App\Http\Controllers\Api\SuperAdmin\SuperAdminController;
 use App\Http\Controllers\Api\Post\ProductController;
 use App\Http\Controllers\Api\Functions\AffiliateLinksController;
+use App\Http\Controllers\Api\Functions\UploadImagesController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -37,6 +38,14 @@ Route::controller(AuthController::class)->group(function(){
     });
    
     Route::post('admin/login', 'adminLogin');
+
+    Route::middleware(['auth:sanctum', 'user'])->group(function(){
+        Route::post('user/edit-user', 'editUser');
+    });
+
+    Route::middleware(['auth:sanctum', 'admin'])->group(function(){
+        Route::post('admin/edit-admin', 'editAdmin');
+    });
 
 });
 
@@ -205,3 +214,8 @@ Route::prefix('editor/affiliate-links')->controller(AffiliateLinksController::cl
 });
 
 
+Route::prefix('images')->controller(UploadImagesController::class)->group(function(){
+    Route::middleware(['auth:sanctum', 'admin', 'publisher'])->group(function(){
+        Route::post('upload', 'uploadImages');
+    });
+});

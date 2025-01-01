@@ -29,7 +29,12 @@ class Post extends Model
     ];
 
     protected $casts = [
-        'content' => 'json',
+        'table_of_content' => 'array',
+        'content' => 'array',
+        'images' => 'array',
+        'key_facts' => 'array',
+        'faq' => 'array',
+        'sources' => 'array',
     ];
 
     public function category()
